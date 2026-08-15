@@ -146,12 +146,11 @@ $('btnFlash').onclick = async () => {
     const files = [];
     for (const part of manifest.parts) {
       const buf = await (await fetch('fw/' + part.path)).arrayBuffer();
-      let bin = '';
-      const u8 = new Uint8Array(buf);
-      for (let i = 0; i < u8.length; i += 0x8000)
-        bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000));
-      files.push({ data: bin, address: part.offset });
-      log('loaded ' + part.path + ' (' + u8.length + ' bytes @ 0x' + part.offset.toString(16) + ')');
+      // esptool-js 0.6+ takes Uint8Array. NOT a binary string: feeding it
+      // one silently coerces every non-digit byte to zero. we learned this
+      // the hard way, twice, on real hardware.
+      files.push({ data: new Uint8Array(buf), address: part.offset });
+      log('loaded ' + part.path + ' (' + buf.byteLength + ' bytes @ 0x' + part.offset.toString(16) + ')');
     }
     await withLoader(async (loader, mac, chipName) => {
       // wrong-chip firmware boots black and stays black until reflashed.
