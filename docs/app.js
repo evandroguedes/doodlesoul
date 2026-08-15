@@ -187,7 +187,22 @@ $('btnFlash').onclick = async () => {
         log('hiccup (' + e.message + '), retrying once from the top…');
         await doWrite();
       }
-      log('flashed. say hello.');
+      // trust nothing: ask the stub for an MD5 of what actually landed in
+      // flash and compare with the manifest. the reply is tiny, so it works
+      // even over links that mangle bulk readback.
+      let allGood = true;
+      for (const part of manifest.parts) {
+        const got = await loader.flashMd5sum(part.offset, part.size);
+        const ok = got === part.md5;
+        if (!ok) allGood = false;
+        log(part.path + ': ' + (ok ? 'verified ✓' : 'MD5 MISMATCH (' + got + ')'));
+      }
+      if (!allGood) {
+        log('flash verification FAILED — the device will likely not boot.');
+        log('please flash once with PlatformIO (see the repo README).');
+      } else {
+        log('all four parts verified in flash. say hello.');
+      }
     }, true);
   } catch (e) { log('error: ' + e.message); }
 };
