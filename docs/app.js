@@ -104,15 +104,15 @@ async function withLoader(fn, needStub) {
   const loader = new ESPLoader({ transport, baudrate: 115200, terminal: term });
   try {
     if (needStub) {
-      const chipName = await loader.main();     // full init incl. flasher stub
-      log('chip: ' + chipName);
+      await loader.main();                      // full init incl. flasher stub
     } else {
       await loader.detectChip();                // reading eFuse needs no stub
-      log('chip: ' + loader.chip.CHIP_NAME);
     }
+    const chipName = loader.chip.CHIP_NAME;
+    log('chip: ' + chipName);
     const mac = await loader.chip.readMac(loader);
     log('mac: ' + mac);
-    await fn(loader, mac);
+    await fn(loader, mac, chipName);
     // clean reset back into the app: clear DTR first, or the IO0 strap can
     // bounce the chip straight back into the bootloader (frozen screen)
     await transport.setDTR(false);
@@ -153,15 +153,28 @@ $('btnFlash').onclick = async () => {
       files.push({ data: bin, address: part.offset });
       log('loaded ' + part.path + ' (' + u8.length + ' bytes @ 0x' + part.offset.toString(16) + ')');
     }
-    await withLoader(async (loader, mac) => {
+    await withLoader(async (loader, mac, chipName) => {
+      // wrong-chip firmware boots black and stays black until reflashed.
+      // this build is compiled for the plain ESP32 only.
+      if (chipName !== manifest.chip) {
+        log('STOP: this firmware is built for ' + manifest.chip + ', but your chip is ' +
+            chipName + '. writing it would leave the device dark until you flash a proper ' +
+            chipName + ' image. nothing was written.');
+        const s2 = soulFromMac(mac);
+        setSoul(s2);
+        log('(your chip still has a soul though: ' + M.UTF8ToString(M._soul_name(s2)) + ')');
+        return;
+      }
       const s = soulFromMac(mac);
       setSoul(s);
       log('flashing at 115200, uncompressed — about a minute, hang in there…');
       log('the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
       // compress:false — the deflate path trips over browser-serial quirks
       // (stub error 0xC9); plain blocks are checksummed and predictable
+      // explicit params matching the PlatformIO build — esptool-js's 'keep'
+      // path can mangle the bootloader header (flash ok, boots black)
       const doWrite = () => loader.writeFlash({
-        fileArray: files, flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep',
+        fileArray: files, flashSize: '4MB', flashMode: 'dio', flashFreq: '40m',
         eraseAll: false, compress: false,
         reportProgress: (i, written, total) => {
           const pct = Math.floor(written / total * 100);
