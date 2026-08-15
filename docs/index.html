@@ -13,8 +13,9 @@
   h1 { font-size: 34px; margin: 0 0 4px; font-weight: normal; }
   .sub { color: var(--faint); margin: 0 0 28px; }
   .stage { display: flex; gap: 26px; flex-wrap: wrap; align-items: flex-start; }
-  canvas { width: 270px; height: 480px; border: 1px solid #d5d0c4;
-           background: var(--paper); border-radius: 6px; }
+  canvas { width: min(270px, 88vw); height: auto; aspect-ratio: 270 / 480;
+           border: 1px solid #d5d0c4; background: var(--paper);
+           border-radius: 6px; flex-shrink: 0; }
   .panel { flex: 1; min-width: 260px; }
   .name { font-size: 30px; margin: 0 0 2px; }
   .tier { color: var(--accent); margin: 0 0 14px; }
@@ -22,18 +23,32 @@
              white-space: pre-wrap; background: #e6e1d5; padding: 12px 14px;
              border-radius: 6px; }
   button { font: inherit; background: var(--ink); color: var(--paper);
-           border: 0; border-radius: 6px; padding: 10px 16px; cursor: pointer; }
+           border: 0; border-radius: 6px; padding: 11px 16px; cursor: pointer;
+           min-height: 44px; }
   button.ghost { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
   button:disabled { opacity: .45; cursor: default; }
   .row { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; align-items: center; }
-  input { font: inherit; padding: 9px 12px; border: 1px solid #c9c3b5;
-          border-radius: 6px; background: #f4f0e7; width: 220px; }
+  input { font: inherit; font-size: 16px; padding: 10px 12px;
+          border: 1px solid #c9c3b5; border-radius: 6px; background: #f4f0e7;
+          flex: 1; min-width: 0; max-width: 260px; }
   #log { font: 12px/1.5 ui-monospace, Menlo, monospace; color: var(--faint);
          background: #e6e1d5; border-radius: 6px; padding: 10px 12px;
          height: 130px; overflow-y: auto; white-space: pre-wrap; margin-top: 18px; }
   .note { font-size: 14px; color: var(--faint); margin-top: 26px; }
   a { color: var(--accent); }
   hr { border: 0; border-top: 1px solid #d5d0c4; margin: 28px 0; }
+  @media (max-width: 640px) {
+    .wrap { padding: 20px 16px 48px; }
+    h1 { font-size: 28px; }
+    .stage { flex-direction: column; align-items: center; }
+    canvas { margin: 0 auto; }
+    .panel { width: 100%; min-width: 0; }
+    .name, .tier { text-align: center; }
+    .row { width: 100%; }
+    button { width: 100%; }
+    input { max-width: none; }
+    #log { height: 110px; }
+  }
 </style>
 </head>
 <body>
@@ -41,8 +56,8 @@
   <h1>doodlesoul</h1>
   <p class="sub">every ESP32 leaves the factory with one hand-drawn character
   latent in its silicon. this page reads your chip's MAC address and wakes
-  the same soul the firmware would — drawn right here, by the same engine,
-  compiled to WebAssembly.</p>
+  the same soul the firmware would, drawn right in your browser by the same
+  engine compiled to WebAssembly.</p>
 
   <div class="stage">
     <canvas id="cv" width="270" height="480"></canvas>
@@ -55,12 +70,15 @@
       <div class="row">
         <button id="btnFlash" class="ghost">install doodlesoul firmware</button>
       </div>
+      <p class="note" id="serialNote" style="display:none; margin: 4px 0 10px">
+        connecting and flashing a device needs chrome or edge on a computer.
+        on a phone you can still meet any chip's soul below.</p>
+      <div class="row">
+        <button id="btnRandom" class="ghost">no device? meet a stranger</button>
+      </div>
       <div class="row">
         <input id="macInput" placeholder="or type a MAC: 4c:ac:80:07:13:d8">
         <button id="btnMac" class="ghost">show</button>
-      </div>
-      <div class="row">
-        <button id="btnRandom" class="ghost">no device? meet a stranger</button>
       </div>
       <pre class="card" id="card"></pre>
     </div>
@@ -69,7 +87,7 @@
   <div id="log">ready. chrome or edge required for the serial parts.</div>
 
   <p class="note">on verification: this page proves that a face <em>belongs to
-  a chip's MAC address</em> — connect any stick and compare what it shows with
+  a chip's MAC address</em>. connect any stick and compare what it shows with
   what its silicon says it should show. it does not prove the firmware is
   unmodified (that would need secure boot). the identity function is
   <a href="https://github.com/evandroguedes/doodlesoul/blob/master/src/soul.h">30

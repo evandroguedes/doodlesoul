@@ -127,7 +127,7 @@ async function withLoader(fn, needStub) {
 }
 
 $('btnConnect').onclick = async () => {
-  if (!('serial' in navigator)) return log('web serial not available — use chrome or edge');
+  if (!('serial' in navigator)) return log('web serial needs chrome or edge on a computer');
   try {
     await withLoader(async (loader, mac) => {
       const s = soulFromMac(mac);
@@ -140,7 +140,7 @@ $('btnConnect').onclick = async () => {
 };
 
 $('btnFlash').onclick = async () => {
-  if (!('serial' in navigator)) return log('web serial not available — use chrome or edge');
+  if (!('serial' in navigator)) return log('web serial needs chrome or edge on a computer');
   try {
     const manifest = await (await fetch('fw/manifest.json')).json();
     const files = [];
@@ -166,7 +166,7 @@ $('btnFlash').onclick = async () => {
       }
       const s = soulFromMac(mac);
       setSoul(s);
-      log('flashing at 115200, uncompressed — about a minute, hang in there…');
+      log('flashing at 115200, uncompressed. about a minute, hang in there');
       log('the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
       // compress:false — the deflate path trips over browser-serial quirks
       // (stub error 0xC9); plain blocks are checksummed and predictable
@@ -197,7 +197,7 @@ $('btnFlash').onclick = async () => {
         log(part.path + ': ' + (ok ? 'verified ✓' : 'MD5 MISMATCH (' + got + ')'));
       }
       if (!allGood) {
-        log('flash verification FAILED — the device will likely not boot.');
+        log('flash verification FAILED. the device will likely not boot.');
         log('please flash once with PlatformIO (see the repo README).');
       } else {
         log('all four parts verified in flash. say hello.');
@@ -228,5 +228,12 @@ createDoodle().then(mod => {
   M = mod;
   emptyState();
   $('name').textContent = '';
-  log('engine loaded. waiting for a chip.');
+  if (!('serial' in navigator)) {
+    $('btnConnect').style.display = 'none';
+    $('btnFlash').style.display = 'none';
+    $('serialNote').style.display = 'block';
+    log('engine loaded. no web serial in this browser, so meet souls by MAC below.');
+  } else {
+    log('engine loaded. waiting for a chip.');
+  }
 });
