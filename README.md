@@ -1,5 +1,9 @@
 # doodlesoul
 
+**Try it now, nothing to install:**
+[evandroguedes.github.io/doodlesoul](https://evandroguedes.github.io/doodlesoul/)
+— meet your chip's soul and flash the firmware straight from Chrome.
+
 Flash it, and a soul is born.
 
 **doodlesoul** wakes the one unique hand-drawn character that was always
