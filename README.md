@@ -67,7 +67,9 @@ open it in Chrome or Edge:
   in the browser by the same engine, compiled to WebAssembly from the same
   source. Works on display-less boards too.
 - **install doodlesoul firmware** flashes the stick right from the page
-  (esptool-js), no toolchain needed.
+  (esptool-js), no toolchain needed. Still beta: some USB-serial chips are
+  picky over Web Serial. If the screen stays black afterwards, flash once
+  with PlatformIO (below) and everything heals — the soul is never at risk.
 - Or type any MAC address and meet its soul.
 
 Because the browser and the firmware share `soul.h` verbatim, the page
