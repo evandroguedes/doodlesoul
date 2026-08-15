@@ -1,4 +1,4 @@
-// doodlesoul web — wake the soul in the browser, flash it to the device.
+// doodlesoul web: wake the soul in the browser, flash it to the device.
 let M = null;                 // the wasm engine
 let seed = null;              // nobody, until a chip speaks
 let animTimer = null;
@@ -24,6 +24,41 @@ function soulFromMac(mac) {
   const s = M._soul_from_mac(p) >>> 0;
   M._free(p);
   return s;
+}
+
+// ---------- live inputs: the soul watches your cursor, or feels your hand ----------
+const input = { px: 0, py: 0, pT: -9e9, oy: 0, op: 0, oT: -9e9 };
+
+window.addEventListener('pointermove', e => {
+  const r = $('cv').getBoundingClientRect();
+  input.px = Math.max(-1.2, Math.min(1.2, (e.clientX - (r.left + r.width / 2)) / r.width * 2));
+  input.py = Math.max(-1, Math.min(1, (e.clientY - (r.top + r.height / 2)) / r.height * 2));
+  input.pT = performance.now();
+});
+
+function onOrient(e) {
+  if (e.gamma === null || e.gamma === undefined) return;
+  input.oy = Math.max(-0.9, Math.min(0.9, e.gamma / 22));
+  input.op = Math.max(-0.35, Math.min(0.45, (55 - e.beta) / 55));
+  input.oT = performance.now();
+}
+
+function armMotion() {
+  if (typeof DeviceOrientationEvent === 'undefined') return;
+  if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+    // iOS wants a tap before it shares the sensors
+    $('btnMotion').style.display = '';
+    $('btnMotion').onclick = () =>
+      DeviceOrientationEvent.requestPermission().then(st => {
+        if (st === 'granted') {
+          window.addEventListener('deviceorientation', onOrient);
+          $('btnMotion').style.display = 'none';
+          log('it can feel your hand now. tilt the phone.');
+        }
+      }).catch(() => log('motion permission refused'));
+  } else {
+    window.addEventListener('deviceorientation', onOrient);
+  }
 }
 
 // ---------- the living portrait ----------
@@ -77,10 +112,17 @@ function tick() {
     anim.blinkUntil = now + 140;
     anim.nextBlink = now + 2200 + Math.random() * 3800;
   }
-  anim.yaw += (anim.yawT + 0.04 * Math.sin(now * 0.0021) - anim.yaw) * 0.22;
-  anim.pitch += (anim.pitchT - anim.pitch) * 0.22;
+  // priority: the phone's tilt, then the cursor, then the daydream
+  let yawT = anim.yawT, pitchT = anim.pitchT, gazeT = anim.gazeT, ease = 0.22;
+  if (now - input.oT < 1200) {
+    yawT = input.oy; pitchT = input.op; gazeT = input.oy * 0.5; ease = 0.35;
+  } else if (now - input.pT < 2500) {
+    yawT = input.px * 0.9; pitchT = -input.py * 0.5; gazeT = input.px * 0.5; ease = 0.35;
+  }
+  anim.yaw += (yawT + 0.04 * Math.sin(now * 0.0021) - anim.yaw) * ease;
+  anim.pitch += (pitchT - anim.pitch) * ease;
   anim.roll += (anim.rollT - anim.roll) * 0.18;
-  anim.gaze += (anim.gazeT - anim.gaze) * 0.15;
+  anim.gaze += (gazeT - anim.gaze) * 0.3;
 
   const sd = Number(seed);
   M._render(sd, anim.yaw, anim.pitch, anim.roll, anim.gaze,
@@ -168,9 +210,9 @@ $('btnFlash').onclick = async () => {
       setSoul(s);
       log('flashing at 115200, uncompressed. about a minute, hang in there');
       log('the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
-      // compress:false — the deflate path trips over browser-serial quirks
+      // compress:false, because the deflate path trips over browser-serial quirks
       // (stub error 0xC9); plain blocks are checksummed and predictable
-      // explicit params matching the PlatformIO build — esptool-js's 'keep'
+      // explicit params matching the PlatformIO build; esptool-js's 'keep'
       // path can mangle the bootloader header (flash ok, boots black)
       const doWrite = () => loader.writeFlash({
         fileArray: files, flashSize: '4MB', flashMode: 'dio', flashFreq: '40m',
@@ -236,4 +278,5 @@ createDoodle().then(mod => {
   } else {
     log('engine loaded. waiting for a chip.');
   }
+  armMotion();
 });
