@@ -93,11 +93,30 @@ samples.
 If tilt feels inverted on your unit, flip `YAW_SIGN` / `PITCH_SIGN` at
 the top of `src/main.cpp`.
 
-## Ports
+## Board compatibility
 
-The engine is display-agnostic; "and friends" means any ESP32 + display.
-See doodleink's README for the two-method canvas interface — this whole
-app is one file.
+The identity math works on every Espressif chip, so the web page can meet
+the soul of anything esptool talks to. The firmware in this repo is built
+for the plain ESP32; the page refuses to flash it onto other chip
+families (an S3 accepting it was how we learned to check).
+
+| board | chip | screen | status |
+|---|---|---|---|
+| M5StickC Plus | ESP32-PICO-D4 | 135×240 ST7789 | tested, this is the dev board |
+| M5StickC Plus2 | ESP32-PICO-V3-02 | 135×240 ST7789 | should work with the same binary, untested. M5Unified detects the board at runtime and the code reads the panel size dynamically |
+| M5StickC (original) | ESP32-PICO-D4 | 80×160 ST7735 | likely works untested, the face just renders smaller |
+| M5Stack Core2 | ESP32 + 8MB PSRAM | 320×240 | needs a small change: the framebuffers outgrow internal RAM at 320×240, so they have to move to PSRAM |
+| M5Cardputer | ESP32-S3 | 240×135 ST7789 | needs an S3 build target and a button remap (it has a keyboard). Same panel size as the Stick, so the art is ready |
+| M5Stack CoreS3, AtomS3, Dial | ESP32-S3 | various | same S3 build work as the Cardputer |
+| TTGO T-Display and other bare ESP32 + ST7789 boards | ESP32 | 135×240 | the engine runs fine, but these need a display shim to replace M5Unified (the canvas interface is two methods, see doodleink) |
+| M5Paper and other e-paper | ESP32 | e-paper | planned. The ink-on-paper look was made for it |
+| every other Espressif chip (S2, C3, C6...) | any | any or none | the web page reads its MAC and shows its soul today. Firmware needs a port |
+
+Souls are portable by definition: the same chip produces the same
+character no matter which board or firmware build carries it.
+
+The whole app is one file, and the engine's canvas interface is two
+methods, so ports are mostly board bring-up. If you do one, open a PR.
 
 ## Credits
 
