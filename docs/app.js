@@ -99,7 +99,9 @@ async function withLoader(fn, needStub) {
   const port = await navigator.serial.requestPort();
   const transport = new Transport(port, true);
   const term = { clean() {}, writeLine: l => log(l), write: d => {} };
-  const loader = new ESPLoader({ transport, baudrate: 460800, terminal: term });
+  // stay at the ROM's 115200: the stick's USB-serial chip drops the stream
+  // on esptool's mid-session baud switch over Web Serial. slower, reliable.
+  const loader = new ESPLoader({ transport, baudrate: 115200, terminal: term });
   try {
     if (needStub) {
       const chipName = await loader.main();     // full init incl. flasher stub
@@ -154,12 +156,14 @@ $('btnFlash').onclick = async () => {
     await withLoader(async (loader, mac) => {
       const s = soulFromMac(mac);
       setSoul(s);
-      log('flashing… the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
+      log('flashing at 115200 baud — takes about a minute, hang in there…');
+      log('the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
       await loader.writeFlash({
         fileArray: files, flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep',
         eraseAll: false, compress: true,
         reportProgress: (i, written, total) => {
-          if (written === total) log('part ' + (i + 1) + '/' + files.length + ' done');
+          const pct = Math.floor(written / total * 100);
+          if (pct % 25 === 0 && written > 0) log('part ' + (i + 1) + '/' + files.length + ': ' + pct + '%');
         },
       });
       log('flashed. say hello.');
