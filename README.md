@@ -4,7 +4,7 @@
 [evandroguedes.github.io/doodlesoul](https://evandroguedes.github.io/doodlesoul/)
 — meet your chip's soul and flash the firmware straight from Chrome.
 
-Flash it, and a soul is born.
+Every chip ships with a soul. Flash this, and it wakes.
 
 **doodlesoul** wakes the one unique hand-drawn character that was always
 latent in your M5StickC Plus — a little doodle person with a name, a
