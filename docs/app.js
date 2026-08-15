@@ -1,6 +1,6 @@
 // doodlesoul web — wake the soul in the browser, flash it to the device.
 let M = null;                 // the wasm engine
-let seed = 0x6382f84bn;       // a demo soul until a device connects
+let seed = null;              // nobody, until a chip speaks
 let animTimer = null;
 
 const $ = id => document.getElementById(id);
@@ -32,6 +32,21 @@ const anim = { yaw: 0, pitch: 0, roll: 0, gaze: 0,
                mood: 0, moodSeed: 1, nextGlance: 0, nextMood: 0,
                nextBlink: 0, blinkUntil: 0, frame: 0 };
 
+function emptyState() {
+  const cv = $('cv'), ctx = cv.getContext('2d');
+  ctx.fillStyle = '#ede9df';
+  ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.fillStyle = 'rgba(60,56,50,0.10)';
+  for (let i = 0; i < 350; i++)
+    ctx.fillRect(Math.random() * cv.width, Math.random() * cv.height, 1.5, 1.5);
+  ctx.fillStyle = '#8a857a';
+  ctx.font = '15px Georgia, serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('nobody here yet', cv.width / 2, cv.height / 2 - 10);
+  ctx.font = '13px Georgia, serif';
+  ctx.fillText('connect a stick, or type a MAC', cv.width / 2, cv.height / 2 + 14);
+}
+
 function setSoul(s) {
   seed = BigInt(s >>> 0);
   const sd = Number(seed);
@@ -40,9 +55,11 @@ function setSoul(s) {
   const card = M.UTF8ToString(M._soul_card(sd));
   $('tier').textContent = card.split('\n')[0] + '  ·  id ' + sd.toString(16).padStart(8, '0');
   $('card').textContent = card.split('\n').slice(1).join('\n');
+  if (!animTimer) animTimer = setInterval(tick, 80);
 }
 
 function tick() {
+  if (seed === null) return;
   const now = performance.now();
   if (now > anim.nextGlance) {
     anim.yawT = (Math.random() * 2 - 1) * 0.6;
@@ -147,7 +164,7 @@ $('btnMac').onclick = () => {
 // ---------- boot ----------
 createDoodle().then(mod => {
   M = mod;
-  setSoul(0x6382f84b);   // Gurenu greets visitors until a device connects
-  log('engine loaded (' + (M.HEAPU8.length / 1024 / 1024).toFixed(1) + ' MB heap). ');
-  animTimer = setInterval(tick, 80);
+  emptyState();
+  $('name').textContent = '';
+  log('engine loaded. waiting for a chip.');
 });
