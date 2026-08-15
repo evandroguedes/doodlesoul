@@ -206,6 +206,15 @@ $('btnFlash').onclick = async () => {
   } catch (e) { log('error: ' + e.message); }
 };
 
+$('btnRandom').onclick = () => {
+  // a random MAC: some chip somewhere might have this soul
+  const b = Array.from(crypto.getRandomValues(new Uint8Array(6)));
+  const mac = b.map(x => x.toString(16).padStart(2, '0')).join(':');
+  const s = soulFromMac(mac);
+  setSoul(s);
+  log('a stranger, from ' + mac + ' — if a chip with that address exists, this is who lives in it');
+};
+
 $('btnMac').onclick = () => {
   const s = soulFromMac($('macInput').value);
   if (s === null) return log('could not parse that MAC');
