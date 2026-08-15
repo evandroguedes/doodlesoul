@@ -93,15 +93,21 @@ function tick() {
 }
 
 // ---------- serial: read the chip, flash the firmware ----------
-async function withLoader(fn) {
-  const { ESPLoader, Transport } = await import('https://esm.sh/esptool-js@0.5.7');
+// self-hosted esptool-js bundle (CDN builds mangle the flasher stub)
+async function withLoader(fn, needStub) {
+  const { ESPLoader, Transport } = await import('./vendor/esptool.js');
   const port = await navigator.serial.requestPort();
   const transport = new Transport(port, true);
   const term = { clean() {}, writeLine: l => log(l), write: d => {} };
   const loader = new ESPLoader({ transport, baudrate: 460800, terminal: term });
   try {
-    const chipName = await loader.main();
-    log('chip: ' + chipName);
+    if (needStub) {
+      const chipName = await loader.main();     // full init incl. flasher stub
+      log('chip: ' + chipName);
+    } else {
+      await loader.detectChip();                // reading eFuse needs no stub
+      log('chip: ' + loader.chip.CHIP_NAME);
+    }
     const mac = await loader.chip.readMac(loader);
     log('mac: ' + mac);
     await fn(loader, mac);
@@ -120,7 +126,7 @@ $('btnConnect').onclick = async () => {
       log('this chip\'s soul: ' + M.UTF8ToString(M._soul_name(s)) +
           ' (' + s.toString(16).padStart(8, '0') + ')');
       log('if doodlesoul is installed, the face on the screen should be this one.');
-    });
+    }, false);
   } catch (e) { log('error: ' + e.message); }
 };
 
@@ -150,7 +156,7 @@ $('btnFlash').onclick = async () => {
         },
       });
       log('flashed. say hello.');
-    });
+    }, true);
   } catch (e) { log('error: ' + e.message); }
 };
 

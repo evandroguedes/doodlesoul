@@ -1,2 +1,5 @@
 .pio/
 .DS_Store
+web/node_modules/
+web/package*.json
+web/esptool_entry.js
