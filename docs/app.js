@@ -111,7 +111,14 @@ async function withLoader(fn, needStub) {
     const mac = await loader.chip.readMac(loader);
     log('mac: ' + mac);
     await fn(loader, mac);
-    await loader.hardReset();
+    // clean reset back into the app: clear DTR first, or the IO0 strap can
+    // bounce the chip straight back into the bootloader (frozen screen)
+    await transport.setDTR(false);
+    await transport.setRTS(true);
+    await new Promise(r => setTimeout(r, 150));
+    await transport.setRTS(false);
+    await new Promise(r => setTimeout(r, 100));
+    log('device restarting. if the face stays frozen, tap its power button.');
   } finally {
     await transport.disconnect().catch(() => {});
   }
