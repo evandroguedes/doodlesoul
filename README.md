@@ -53,6 +53,25 @@ their trait roll was.
   display off). Move it or press a button to wake it. On USB power it
   never dims.
 
+## The web page (no install, no display needed)
+
+**[evandroguedes.github.io/doodlesoul](https://evandroguedes.github.io/doodlesoul/)** —
+open it in Chrome or Edge:
+
+- **connect stick & meet its soul** reads your chip's MAC over Web Serial
+  and renders the exact character that lives (or would live) in it — drawn
+  in the browser by the same engine, compiled to WebAssembly from the same
+  source. Works on display-less boards too.
+- **install doodlesoul firmware** flashes the stick right from the page
+  (esptool-js), no toolchain needed.
+- Or type any MAC address and meet its soul.
+
+Because the browser and the firmware share `soul.h` verbatim, the page
+doubles as a soft provenance check: connect any device and compare the
+face on its screen with what its silicon says it should be. (It proves
+the face belongs to the MAC — not that the firmware is unmodified; that
+would need secure boot.)
+
 ## Build & flash
 
 ```sh
