@@ -156,16 +156,24 @@ $('btnFlash').onclick = async () => {
     await withLoader(async (loader, mac) => {
       const s = soulFromMac(mac);
       setSoul(s);
-      log('flashing at 115200 baud — takes about a minute, hang in there…');
+      log('flashing at 115200, uncompressed — about a minute, hang in there…');
       log('the soul that will wake up is ' + M.UTF8ToString(M._soul_name(s)));
-      await loader.writeFlash({
+      // compress:false — the deflate path trips over browser-serial quirks
+      // (stub error 0xC9); plain blocks are checksummed and predictable
+      const doWrite = () => loader.writeFlash({
         fileArray: files, flashSize: 'keep', flashMode: 'keep', flashFreq: 'keep',
-        eraseAll: false, compress: true,
+        eraseAll: false, compress: false,
         reportProgress: (i, written, total) => {
           const pct = Math.floor(written / total * 100);
           if (pct % 25 === 0 && written > 0) log('part ' + (i + 1) + '/' + files.length + ': ' + pct + '%');
         },
       });
+      try {
+        await doWrite();
+      } catch (e) {
+        log('hiccup (' + e.message + '), retrying once from the top…');
+        await doWrite();
+      }
       log('flashed. say hello.');
     }, true);
   } catch (e) { log('error: ' + e.message); }
