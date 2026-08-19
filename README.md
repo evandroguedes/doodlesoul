@@ -48,7 +48,7 @@ their trait roll was.
 ## Living with it
 
 - **tilt** — it turns to follow gravity, like a level
-- **BtnA** (front) — pet it: it beams and does a little hop
+- **BtnA** (front) — next skin (doodle, wild, ...): same soul, a different artist's hand
 - **shake** — it gets dizzy (careful)
 - **BtnB click** — its soul card: name, traits, rarity, id, boot count
 - **BtnB hold** — freeze on a fine-art still
@@ -87,8 +87,8 @@ pio device monitor     # the soul card prints at boot
 ```
 
 Serial console: `s` dumps a pixel-perfect screenshot (decode with
-doodleink's `extras/tools/screenshot.py`), `i` prints accelerometer
-samples.
+doodleink's `extras/tools/screenshot.py`), `k` cycles skins without
+reaching for the button, `i` prints accelerometer samples.
 
 If tilt feels inverted on your unit, flip `YAW_SIGN` / `PITCH_SIGN` at
 the top of `src/main.cpp`.

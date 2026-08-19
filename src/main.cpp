@@ -6,14 +6,14 @@
 // devices flashing the same binary get different souls, guaranteed by
 // the hardware. There is no command to change it. That is the point.
 //
-//   BtnA (front)  press : pet it (it beams and does a little hop)
+//   BtnA (front)  press : next skin (doodle, wild, ...) — same soul, new hand
 //   BtnB (side)   click : soul card (name, traits, rarity, boots)
 //   BtnB          hold  : freeze / unfreeze (fine-art still)
 //   tilt                : it turns to follow gravity, like a level
 //   shake               : it gets dizzy (careful)
 //   leave it alone      : it daydreams — glances, blinks, mood swings
 //
-// Serial console: s = screenshot (tools/screenshot.py), i = accel dump.
+// Serial console: s = screenshot, k = next skin, i = accel dump.
 #include <M5Unified.h>
 #include <Preferences.h>
 #include <doodleink.h>
@@ -62,7 +62,7 @@ struct Fb565Canvas : dd::Canvas {
 
 static Fb565Canvas canvas;
 static Preferences prefs;
-static dd::FaceTraits base, live;
+static dd::FaceTraits base;   // canonical traits, for the card only
 static dd::Rng anim(1);
 
 // soul
@@ -70,6 +70,7 @@ static uint32_t soulSeed = 1;
 static uint32_t boots = 1;
 static bool justBorn = false;
 static char soulName_[16];
+static int skinIdx = 0;
 
 // animation
 static float yaw = 0, pitch = 0, roll = 0;
@@ -103,6 +104,13 @@ static void loadSoul() {
     prefs.putUInt("boots", boots);
   }
   soulName(soulSeed, soulName_, sizeof soulName_);
+  skinIdx = justBorn ? 0 : (int)(prefs.getUInt("skin", 0) % dd::skinCount());
+  if (justBorn) prefs.putUInt("skin", 0);  // a new life starts in its own ink
+}
+
+static void applySkin() {  // regenerate the paper in this skin's hand
+  dd::DD_SKINS[skinIdx].paper(canvas, soulSeed * 7u + 3u);
+  memcpy(paperBuf, fb, (size_t)W * H * 2);
 }
 
 static void printCard() {
@@ -194,16 +202,18 @@ static void noteInteraction() {
 
 static void drawLive(int speed, bool sleepy = false) {
   uint32_t t0 = millis();
-  live = base;
-  dd::applyMood(live, sleepy ? 4 : mood, moodSeed);
-  live.turn = dd::clampf(yaw, -0.9f, 0.9f);
-  live.pitch = dd::clampf(pitch, -0.4f, 0.45f);
-  live.roll = dd::clampf(roll, -0.25f, 0.25f);
-  live.gazeX = dd::clampf(gaze, -0.5f, 0.5f);
-  if (sleepy || millis() < blinkUntil) live.idx[dd::C_EYES] = 2;
   memcpy(fb, paperBuf, (size_t)W * H * 2);
-  dd::drawFace(canvas, cov, live, W * 0.5f, H * 0.46f,
-               (float)H * 0.30f * (1.0f + bounce), soulSeed * 31u + (frameNo % 3), speed);
+  dd::SkinPose pose;
+  pose.turn = dd::clampf(yaw, -0.9f, 0.9f);
+  pose.pitch = dd::clampf(pitch, -0.4f, 0.45f);
+  pose.roll = dd::clampf(roll, -0.25f, 0.25f);
+  pose.gazeX = dd::clampf(gaze, -0.5f, 0.5f);
+  pose.mood = sleepy ? 4 : mood;
+  pose.moodSeed = moodSeed;
+  pose.blink = sleepy || millis() < blinkUntil;
+  dd::DD_SKINS[skinIdx].posed(canvas, cov, soulSeed, W * 0.5f, H * 0.46f,
+                              (float)H * 0.30f * (1.0f + bounce),
+                              soulSeed * 31u + (frameNo % 3), speed, pose);
   drawBatteryDots();
   drawMs = millis() - t0;
   M5.Display.startWrite();
@@ -245,13 +255,16 @@ static void wakeUp() {
   drawLive(1);
 }
 
-static void pet() {
+static void nextSkin() {
   noteInteraction();
-  mood = 1;                       // beams
+  skinIdx = (skinIdx + 1) % dd::skinCount();
+  prefs.putUInt("skin", (uint32_t)skinIdx);
+  applySkin();
+  hopUntil = millis() + 650;      // it hops, delighted by its new look
+  mood = 1;
   moodSeed = soulSeed + frameNo;
   nextMood = millis() + (uint32_t)anim.rr(6000, 10000);
-  hopUntil = millis() + 650;
-  gazeT = 0;                      // looks right at you
+  drawLive(0);
 }
 
 static void animate() {
@@ -355,8 +368,7 @@ void setup() {
   updateBattery();
   lastInteract = millis();
 
-  dd::paperBackground(canvas, soulSeed * 7u + 3u);
-  memcpy(paperBuf, fb, (size_t)W * H * 2);
+  applySkin();
   drawLive(1);
   printCard();
 
@@ -382,6 +394,7 @@ void loop() {
   if (Serial.available()) {
     char ch = Serial.read();
     if (ch == 's') dumpScreen();
+    else if (ch == 'k') nextSkin();
     else if (ch == 'm') Serial.printf("mac %012llx soul %08x %s\n",
                                       (unsigned long long)ESP.getEfuseMac(), soulSeed, soulName_);
     else if (ch == 'i') {
@@ -421,7 +434,7 @@ void loop() {
   }
 
   if (M5.BtnA.wasPressed()) {
-    pet();
+    nextSkin();
   } else if (M5.BtnB.wasClicked()) {
     noteInteraction();
     showCard = !showCard;
