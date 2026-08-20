@@ -13,7 +13,9 @@
 //   shake               : it gets dizzy (careful)
 //   leave it alone      : it daydreams — glances, blinks, mood swings
 //
-// Serial console: s = screenshot, k = next skin, i = accel dump.
+// Serial console: s = screenshot, k = next skin, i = accel dump,
+// m = mac/soul, f = last frame ms, "P <turn> <pitch>" = hold an exact
+// pose (debugging), p = release it.
 #include <M5Unified.h>
 #include <Preferences.h>
 #include <doodleink.h>
@@ -82,6 +84,8 @@ static uint32_t nextGlance = 0, nextMood = 0, nextBlink = 0, blinkUntil = 0;
 static uint32_t hopUntil = 0, dizzyUntil = 0, lastDizzy = 0;
 static uint32_t frameNo = 0, drawMs = 0;
 static bool frozen = false, showCard = false;
+static bool poseLock = false;          // serial 'P t p': hold an exact pose
+static float lockTurn = 0, lockPitch = 0;
 
 // power
 static uint32_t lastInteract = 0;
@@ -336,6 +340,12 @@ static void animate() {
   roll += (rollT - roll) * 0.3f;
   gaze += (gazeT + (upright > 0.5f ? imuYaw * 0.4f : 0) - gaze) * 0.3f;
 
+  if (poseLock) {  // serial debug: exact, still pose
+    yaw = lockTurn; pitch = lockPitch; roll = 0;
+    gaze = lockTurn * 0.4f;
+    blinkUntil = 0; bounce = 0;
+  }
+
   drawLive(1);
 }
 
@@ -397,7 +407,18 @@ void loop() {
     else if (ch == 'k') nextSkin();
     else if (ch == 'm') Serial.printf("mac %012llx soul %08x %s\n",
                                       (unsigned long long)ESP.getEfuseMac(), soulSeed, soulName_);
-    else if (ch == 'i') {
+    else if (ch == 'P') {  // debug: freeze the pose, e.g. "P -0.9 0.1"
+      lockTurn = Serial.parseFloat();
+      lockPitch = Serial.parseFloat();
+      poseLock = true;
+      noteInteraction();
+      Serial.printf("pose lock %.2f %.2f\n", lockTurn, lockPitch);
+    } else if (ch == 'p') {
+      poseLock = false;
+      Serial.println("pose free");
+    } else if (ch == 'f') {
+      Serial.printf("frame %u ms\n", drawMs);
+    } else if (ch == 'i') {
       for (int k = 0; k < 10; k++) {
         float ax, ay, az;
         M5.Imu.update();
