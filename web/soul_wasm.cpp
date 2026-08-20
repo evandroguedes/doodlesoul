@@ -14,6 +14,7 @@ static uint8_t rgba[W * H * 4];
 static uint8_t paper[W * H * 4];
 static uint8_t cov[W * H];
 static uint32_t paperSeed = 0;
+static int paperSkin = -1;
 static uint32_t traitSeed = 0;
 static dd::FaceTraits baseTraits;
 static char nameBuf[16];
@@ -32,16 +33,17 @@ struct RgbaCanvas : dd::Canvas {
 };
 static RgbaCanvas canvas;
 
-static void ensureSoul(uint32_t seed) {
+static void ensureSoul(uint32_t seed, int skin) {
   if (traitSeed != seed) {
     dd::rollFace(baseTraits, seed);
     traitSeed = seed;
   }
-  if (paperSeed != seed) {
+  if (paperSeed != seed || paperSkin != skin) {  // each skin makes its own paper
     canvas.px = paper;
-    dd::paperBackground(canvas, seed * 7u + 3u);
+    dd::DD_SKINS[skin].paper(canvas, seed * 7u + 3u);
     canvas.px = rgba;
     paperSeed = seed;
+    paperSkin = skin;
   }
 }
 
@@ -62,9 +64,12 @@ const char* soul_name(uint32_t seed) {
   return nameBuf;
 }
 
+EMSCRIPTEN_KEEPALIVE int skin_count() { return dd::skinCount(); }
+EMSCRIPTEN_KEEPALIVE const char* skin_name(int k) { return dd::DD_SKINS[k].name; }
+
 EMSCRIPTEN_KEEPALIVE
 const char* soul_card(uint32_t seed) {
-  ensureSoul(seed);
+  ensureSoul(seed, 0);
   int n = snprintf(cardBuf, sizeof cardBuf, "%s soul, %.1f bits\n",
                    dd::tierName(baseTraits.score), baseTraits.score);
   for (int i = 1; i < dd::C_COUNT; i++)  // skip facing (pose, not identity)
@@ -77,19 +82,25 @@ EMSCRIPTEN_KEEPALIVE uint8_t* frame_buf() { return rgba; }
 EMSCRIPTEN_KEEPALIVE int frame_w() { return W; }
 EMSCRIPTEN_KEEPALIVE int frame_h() { return H; }
 
+// Same contract as the firmware's drawLive: any skin from the registry,
+// held in a pose. skin 0 = doodle, 1 = wild — dd::DD_SKINS order.
 EMSCRIPTEN_KEEPALIVE
-void render(uint32_t seed, float turn, float pitch, float roll, float gazeX,
-            int mood, uint32_t moodSeed, uint32_t strokeSeed, int blink, int speed) {
-  ensureSoul(seed);
-  dd::FaceTraits live = baseTraits;
-  dd::applyMood(live, mood, moodSeed);
-  live.turn = dd::clampf(turn, -0.9f, 0.9f);
-  live.pitch = dd::clampf(pitch, -0.4f, 0.45f);
-  live.roll = dd::clampf(roll, -0.25f, 0.25f);
-  live.gazeX = dd::clampf(gazeX, -0.5f, 0.5f);
-  if (blink) live.idx[dd::C_EYES] = 2;
+void render(uint32_t seed, int skin, float turn, float pitch, float roll,
+            float gazeX, int mood, uint32_t moodSeed, uint32_t strokeSeed,
+            int blink, int speed) {
+  if (skin < 0 || skin >= dd::skinCount()) skin = 0;
+  ensureSoul(seed, skin);
+  dd::SkinPose pose;
+  pose.turn = dd::clampf(turn, -0.9f, 0.9f);
+  pose.pitch = dd::clampf(pitch, -0.4f, 0.45f);
+  pose.roll = dd::clampf(roll, -0.25f, 0.25f);
+  pose.gazeX = dd::clampf(gazeX, -0.5f, 0.5f);
+  pose.mood = mood;
+  pose.moodSeed = moodSeed;
+  pose.blink = blink != 0;
   memcpy(rgba, paper, sizeof rgba);
-  dd::drawFace(canvas, cov, live, W * 0.5f, H * 0.46f, (float)H * 0.30f, strokeSeed, speed);
+  dd::DD_SKINS[skin].posed(canvas, cov, seed, W * 0.5f, H * 0.46f,
+                           (float)H * 0.30f, strokeSeed, speed, pose);
 }
 
 }  // extern "C"

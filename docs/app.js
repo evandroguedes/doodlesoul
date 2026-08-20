@@ -1,6 +1,7 @@
 // doodlesoul web: wake the soul in the browser, flash it to the device.
 let M = null;                 // the wasm engine
 let seed = null;              // nobody, until a chip speaks
+let skin = 0;                 // 0 doodle, 1 wild — same soul, another hand
 let animTimer = null;
 
 const $ = id => document.getElementById(id);
@@ -90,7 +91,27 @@ function setSoul(s) {
   const card = M.UTF8ToString(M._soul_card(sd));
   $('tier').textContent = card.split('\n')[0] + '  ·  id ' + sd.toString(16).padStart(8, '0');
   $('card').textContent = card.split('\n').slice(1).join('\n');
+  $('btnSkin').style.display = '';
+  skinLabel();
   if (!animTimer) animTimer = setInterval(tick, 80);
+}
+
+// ---------- skins: the web twin of the device's BtnA ----------
+function skinLabel() {
+  const cur = M.UTF8ToString(M._skin_name(skin));
+  const nxt = M.UTF8ToString(M._skin_name((skin + 1) % M._skin_count()));
+  $('btnSkin').textContent = 'skin: ' + cur + ' · tap for ' + nxt;
+}
+
+function nextSkin() {
+  if (seed === null) return;
+  skin = (skin + 1) % M._skin_count();
+  anim.mood = 1;                      // it likes its new look, same as the stick
+  anim.moodSeed = (Number(seed) + anim.frame) >>> 0;
+  anim.nextMood = performance.now() + 6000 + Math.random() * 4000;
+  skinLabel();
+  log('same soul, another hand: ' + M.UTF8ToString(M._skin_name(skin)));
+  tick();
 }
 
 function tick() {
@@ -125,7 +146,7 @@ function tick() {
   anim.gaze += (gazeT - anim.gaze) * 0.3;
 
   const sd = Number(seed);
-  M._render(sd, anim.yaw, anim.pitch, anim.roll, anim.gaze,
+  M._render(sd, skin, anim.yaw, anim.pitch, anim.roll, anim.gaze,
             anim.mood, anim.moodSeed, (sd * 31 + (anim.frame % 3)) >>> 0,
             now < anim.blinkUntil ? 1 : 0, 1);
   const w = M._frame_w(), h = M._frame_h();
@@ -264,6 +285,9 @@ $('btnMac').onclick = () => {
   setSoul(s);
   log('soul of ' + $('macInput').value.trim() + ': ' + M.UTF8ToString(M._soul_name(s)));
 };
+
+$('btnSkin').onclick = nextSkin;
+$('cv').addEventListener('click', nextSkin);   // tapping the portrait = BtnA
 
 // ---------- boot ----------
 createDoodle().then(mod => {

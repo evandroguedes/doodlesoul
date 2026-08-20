@@ -60,7 +60,8 @@
   engine compiled to WebAssembly.</p>
 
   <div class="stage">
-    <canvas id="cv" width="270" height="480"></canvas>
+    <canvas id="cv" width="270" height="480" title="tap: next skin"
+            style="cursor:pointer"></canvas>
     <div class="panel">
       <p class="name" id="name"></p>
       <p class="tier" id="tier"></p>
@@ -73,6 +74,9 @@
       <p class="note" id="serialNote" style="display:none; margin: 4px 0 10px">
         connecting and flashing a device needs chrome or edge on a computer.
         on a phone you can still meet any chip's soul below.</p>
+      <div class="row">
+        <button id="btnSkin" class="ghost" style="display:none">skin: doodle</button>
+      </div>
       <div class="row">
         <button id="btnRandom" class="ghost">no device? meet a stranger</button>
       </div>

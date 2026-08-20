@@ -72,6 +72,8 @@ open it in Chrome or Edge:
   chip type. If anything ever goes sideways, one PlatformIO flash heals
   it — the soul itself is never at risk.
 - Or type any MAC address and meet its soul.
+- Tap the portrait (or the skin button) to see the same soul in another
+  skin — the web twin of the stick's BtnA.
 
 Because the browser and the firmware share `soul.h` verbatim, the page
 doubles as a soft provenance check: connect any device and compare the
